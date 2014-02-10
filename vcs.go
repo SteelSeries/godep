@@ -44,11 +44,11 @@ var vcsGit = &VCS{
 	DescribeCmd: "describe --tags",
 	DiffCmd:     "diff {rev}",
 
-	CreateCmd:   "init --bare",
+	CreateCmd:   "init",
 	LinkCmd:     "remote add {remote} {url}",
 	ExistsCmd:   "cat-file -e {rev}",
-	FetchCmd:    "fetch --quiet {remote}",
-	CheckoutCmd: "--git-dir {repo} --work-tree . checkout -q {rev}",
+	FetchCmd:    "pull --quiet {remote} master",
+	CheckoutCmd: "checkout -q {rev}",
 }
 
 var vcsHg = &VCS{
@@ -62,7 +62,7 @@ var vcsHg = &VCS{
 	LinkFunc:    hgLink,
 	ExistsCmd:   "cat -r {rev} .",
 	FetchCmd:    "pull {remote}",
-	CheckoutCmd: "clone -u {rev} {repo} .",
+	CheckoutCmd: "update -r {rev}",
 }
 
 var cmd = map[*vcs.Cmd]*VCS{

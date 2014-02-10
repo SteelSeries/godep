@@ -52,9 +52,8 @@ func (c *Command) UsageExit() {
 // by 'godep help'.
 var commands = []*Command{
 	cmdSave,
-	cmdGo,
+	cmdInstall,
 	cmdGet,
-	cmdPath,
 	cmdRestore,
 }
 

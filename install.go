@@ -4,74 +4,45 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 )
 
-var spool = filepath.Join(os.TempDir(), "godep")
-
-var cmdGo = &Command{
-	Usage: "go command [arguments]",
-	Short: "run the go tool in a sandbox",
+var cmdInstall = &Command{
+	Usage: "install",
+	Short: "Install go dependencies",
 	Long: `
-Go runs the go tool in a temporary GOPATH sandbox
-with the dependencies listed in file Godeps.
-
-Any go tool command can run this way, but "godep go get"
-is unnecessary and has been disabled. Instead, use
-"godep go install".
+Install makes sure that all the dependencies are
+checked (with their right revisions) out locally
+under $GOPATH/src folder.
 `,
-	Run: runGo,
+	Run: runInstall,
 }
 
-// Set up a sandbox and run the go tool. The sandbox is built
-// out of specific checked-out revisions of repos. We keep repos
-// and revs materialized on disk under the assumption that disk
-// space is cheap and plentiful, and writing files is slow.
-// Everything is kept in the spool directory.
-func runGo(cmd *Command, args []string) {
-	gopath := prepareGopath()
-	if s := os.Getenv("GOPATH"); s != "" {
-		gopath += string(os.PathListSeparator) + os.Getenv("GOPATH")
-	}
-	if len(args) > 0 && args[0] == "get" {
-		log.Printf("invalid subcommand: %q", "go get")
-		fmt.Fprintln(os.Stderr, "Use 'godep go install' instead.")
-		fmt.Fprintln(os.Stderr, "Run 'godep help go' for usage.")
-		os.Exit(2)
-	}
-	c := exec.Command("go", args...)
-	c.Env = append(envNoGopath(), "GOPATH="+gopath)
-	c.Stdin = os.Stdin
-	c.Stdout = os.Stdout
-	c.Stderr = os.Stderr
-	err := c.Run()
-	if err != nil {
-		log.Fatalln("go", err)
-	}
+func runInstall(cmd *Command, args []string) {
+	downloadDependencies()
+
 }
 
 // prepareGopath reads dependency information from the filesystem
 // entry name, fetches any necessary code, and returns a gopath
 // causing the specified dependencies to be used.
-func prepareGopath() (gopath string) {
+func downloadDependencies() {
 	dir, isDir := findGodeps()
 	if dir == "" {
 		log.Fatalln("No Godeps found (or in any parent directory)")
 	}
 	if isDir {
-		return filepath.Join(dir, "Godeps", "_workspace")
+		return
 	}
 	g, err := ReadGodeps(filepath.Join(dir, "Godeps"))
 	if err != nil {
 		log.Fatalln(err)
 	}
-	gopath, err = sandboxAll(g.Deps)
+	err = downloadAll(g.Deps)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	return gopath
 }
 
 // findGodeps looks for a directory entry "Godeps" in the
@@ -119,35 +90,28 @@ func envNoGopath() (a []string) {
 // sandboxAll ensures that the commits in deps are available
 // on disk, and returns a GOPATH string that will cause them
 // to be used.
-func sandboxAll(a []Dependency) (gopath string, err error) {
-	var path []string
+func downloadAll(a []Dependency) (err error) {
 	for _, dep := range a {
-		dir, err := sandbox(dep)
+		err := download(dep)
 		if err != nil {
-			return "", err
+			return err
 		}
-		path = append(path, dir)
 	}
-	return strings.Join(path, ":"), nil
+    return
 }
 
 // sandbox ensures that commit d is available on disk,
 // and returns a GOPATH string that will cause it to be used.
-func sandbox(d Dependency) (gopath string, err error) {
+func download(d Dependency) (err error) {
 	if !exists(d.RepoPath()) {
-		if err = d.CreateRepo("fast", "main"); err != nil {
-			return "", fmt.Errorf("create repo: %s", err)
+		if err = d.CreateRepo("main"); err != nil {
+			return fmt.Errorf("create repo: %s", err)
 		}
+        d.fetchAndCheckout("main")
 	}
-	err = d.checkout()
-	if err != nil && d.FastRemotePath() != "" {
-		err = d.fetchAndCheckout("fast")
-	}
+    err = d.checkout()
 	if err != nil {
 		err = d.fetchAndCheckout("main")
 	}
-	if err != nil {
-		return "", err
-	}
-	return d.Gopath(), nil
+    return
 }

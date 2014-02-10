@@ -56,14 +56,7 @@ func (g *Godeps) Load(pkgs []*Package) error {
 			err1 = errors.New("error loading packages")
 			continue
 		}
-		_, reporoot, err := VCSFromDir(p.Dir, p.Root)
-		if err != nil {
-			log.Println(err)
-			err1 = errors.New("error loading packages")
-			continue
-		}
-		importPath := strings.TrimPrefix(reporoot, "src"+string(os.PathSeparator))
-		seen = append(seen, importPath+"/")
+		seen = append(seen, p.ImportPath+"/")
 		path = append(path, p.Deps...)
 	}
 	var testImports []string
@@ -85,23 +78,21 @@ func (g *Godeps) Load(pkgs []*Package) error {
 	sort.Strings(path)
 	path = uniq(path)
 	for _, pkg := range MustLoadPackages(path...) {
-		if pkg.Error.Err != "" {
-			log.Println(pkg.Error.Err)
-			err1 = errors.New("error loading dependencies")
-			continue
-		}
+        if containsPrefix(seen, pkg.ImportPath) {
+            continue
+        }
+
 		if pkg.Standard {
 			continue
 		}
+
 		vcs, _, err := VCSFromDir(pkg.Dir, pkg.Root)
 		if err != nil {
 			log.Println(err)
-			err1 = errors.New("error loading dependencies")
+            err1 = errors.New("error loading dependencies")
 			continue
 		}
-		if containsPrefix(seen, pkg.ImportPath) {
-			continue
-		}
+
 		seen = append(seen, pkg.ImportPath+"/")
 		id, err := vcs.identify(pkg.Dir)
 		if err != nil {
@@ -124,7 +115,7 @@ func (g *Godeps) Load(pkgs []*Package) error {
 			vcs:        vcs,
 		})
 	}
-	return err1
+    return err1
 }
 
 func ReadGodeps(path string) (*Godeps, error) {
@@ -184,7 +175,7 @@ func (g *Godeps) WriteTo(w io.Writer) (int64, error) {
 //   github.com/kr/s3       $spool/github.com/kr/s3
 //   github.com/lib/pq/oid  $spool/github.com/lib/pq
 func (d Dependency) RepoPath() string {
-	return filepath.Join(spool, "repo", d.repoRoot.Root)
+	return filepath.Join(os.Getenv("GOPATH"), "src", d.repoRoot.Root)
 }
 
 // Returns a URL for the remote copy of the repository.
@@ -200,34 +191,21 @@ func (d Dependency) FastRemotePath() string {
 	return ""
 }
 
-// Returns a path to the checked-out copy of d's commit.
-func (d Dependency) Workdir() string {
-	return filepath.Join(d.Gopath(), "src", d.ImportPath)
-}
-
 // Returns a path to the checked-out copy of d's repo root.
 func (d Dependency) WorkdirRoot() string {
-	return filepath.Join(d.Gopath(), "src", d.repoRoot.Root)
+	return d.RepoPath()
 }
 
-// Returns a path to a parent of Workdir such that using
-// Gopath in GOPATH makes d available to the go tool.
-func (d Dependency) Gopath() string {
-	return filepath.Join(spool, "rev", d.Rev[:2], d.Rev[2:])
-}
 
 // Creates an empty repo in d.RepoPath().
-func (d Dependency) CreateRepo(fastRemote, mainRemote string) error {
+func (d Dependency) CreateRepo(remote string) error {
 	if err := os.MkdirAll(d.RepoPath(), 0777); err != nil {
 		return err
 	}
 	if err := d.vcs.create(d.RepoPath()); err != nil {
 		return err
 	}
-	if err := d.link(fastRemote, d.FastRemotePath()); err != nil {
-		return err
-	}
-	return d.link(mainRemote, d.RemoteURL())
+	return d.link(remote, d.RemoteURL())
 }
 
 func (d Dependency) link(remote, url string) error {
@@ -249,17 +227,7 @@ func (d Dependency) fetch(remote string) error {
 }
 
 func (d Dependency) checkout() error {
-	dir := d.WorkdirRoot()
-	if exists(dir) {
-		return nil
-	}
-	if !d.vcs.exists(d.RepoPath(), d.Rev) {
-		return fmt.Errorf("unknown rev %s for %s", d.Rev, d.ImportPath)
-	}
-	if err := os.MkdirAll(dir, 0777); err != nil {
-		return err
-	}
-	return d.vcs.checkout(dir, d.Rev, d.RepoPath())
+	return d.vcs.checkout(d.WorkdirRoot(), d.Rev, d.RepoPath())
 }
 
 // containsPrefix returns whether any string in a
