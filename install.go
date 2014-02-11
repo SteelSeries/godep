@@ -98,20 +98,31 @@ func downloadAll(a []Dependency) (err error) {
 			return err
 		}
 	}
+    fmt.Println("")
+
     return
+}
+
+func format(data string, maxNoOfChars int) string {
+    noOfCharsToUse := len(data)
+    if noOfCharsToUse > maxNoOfChars {
+        noOfCharsToUse = maxNoOfChars
+    }
+    return data[:noOfCharsToUse]
 }
 
 // sandbox ensures that commit d is available on disk,
 // and returns a GOPATH string that will cause it to be used.
 func download(d Dependency) (err error) {
 	if !exists(d.RepoPath()) {
-        fmt.Printf("\nInitializing %s ...",d.ImportPath)
+        fmt.Printf("\nInstalling %s ...",d.ImportPath)
 		if err = d.CreateRepo("main"); err != nil {
 			return fmt.Errorf("create repo: %s", err)
 		}
         d.fetchAndCheckout("main")
     }
-    fmt.Printf("\nUpdating %s ...",d.ImportPath)
+
+    fmt.Printf("\nUsing %s (%s)",d.ImportPath, format(d.Rev, 8))
     err = d.checkout()
 	if err != nil {
 		err = d.fetchAndCheckout("main")
