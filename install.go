@@ -91,6 +91,7 @@ func envNoGopath() (a []string) {
 // on disk, and returns a GOPATH string that will cause them
 // to be used.
 func downloadAll(a []Dependency) (err error) {
+    fmt.Println("")
 	for _, dep := range a {
 		err := download(dep)
 		if err != nil {
@@ -104,11 +105,13 @@ func downloadAll(a []Dependency) (err error) {
 // and returns a GOPATH string that will cause it to be used.
 func download(d Dependency) (err error) {
 	if !exists(d.RepoPath()) {
+        fmt.Printf("\nInitializing %s ...",d.ImportPath)
 		if err = d.CreateRepo("main"); err != nil {
 			return fmt.Errorf("create repo: %s", err)
 		}
         d.fetchAndCheckout("main")
-	}
+    }
+    fmt.Printf("\nUpdating %s ...",d.ImportPath)
     err = d.checkout()
 	if err != nil {
 		err = d.fetchAndCheckout("main")
