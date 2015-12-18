@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go.tools/go/vcs"
 	"fmt"
+	"golang.org/x/tools/go/vcs"
 	"os"
 	"os/exec"
 	"path/filepath"

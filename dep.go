@@ -1,10 +1,10 @@
 package main
 
 import (
-	"code.google.com/p/go.tools/go/vcs"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/tools/go/vcs"
 	"io"
 	"log"
 	"os"
