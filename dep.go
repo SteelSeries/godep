@@ -1,10 +1,10 @@
 package main
 
 import (
-	"code.google.com/p/go.tools/go/vcs"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"golang.org/x/tools/go/vcs"
 	"io"
 	"log"
 	"os"
@@ -78,9 +78,9 @@ func (g *Godeps) Load(pkgs []*Package) error {
 	sort.Strings(path)
 	path = uniq(path)
 	for _, pkg := range MustLoadPackages(path...) {
-        if containsPrefix(seen, pkg.ImportPath) {
-            continue
-        }
+		if containsPrefix(seen, pkg.ImportPath) {
+			continue
+		}
 
 		if pkg.Standard {
 			continue
@@ -89,7 +89,7 @@ func (g *Godeps) Load(pkgs []*Package) error {
 		vcs, _, err := VCSFromDir(pkg.Dir, pkg.Root)
 		if err != nil {
 			log.Println(err)
-            err1 = errors.New("error loading dependencies")
+			err1 = errors.New("error loading dependencies")
 			continue
 		}
 
@@ -115,7 +115,7 @@ func (g *Godeps) Load(pkgs []*Package) error {
 			vcs:        vcs,
 		})
 	}
-    return err1
+	return err1
 }
 
 func ReadGodeps(path string) (*Godeps, error) {
@@ -195,7 +195,6 @@ func (d Dependency) FastRemotePath() string {
 func (d Dependency) WorkdirRoot() string {
 	return d.RepoPath()
 }
-
 
 // Creates an empty repo in d.RepoPath().
 func (d Dependency) CreateRepo(remote string) error {
